@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe Deluxe</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Awesome for supplemental icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            min-height: 100vh;
+        }
+
+        .glow-x {
+            text-shadow: 0 0 15px rgba(244, 63, 94, 0.6), 0 0 30px rgba(244, 63, 94, 0.4);
+        }
+        
+        .glow-o {
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.6), 0 0 30px rgba(6, 182, 212, 0.4);
+        }
+
+        .box-glow-x {
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.3), inset 0 0 15px rgba(244, 63, 94, 0.2);
+            border-color: #f43f5e !important;
+        }
+
+        .box-glow-o {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3), inset 0 0 15px rgba(6, 182, 212, 0.2);
+            border-color: #06b6d4 !important;
+        }
+
+        /* Glassmorphism containers */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Cell animations */
+        .cell-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cell-btn:hover:not(:disabled) {
+            transform: scale(1.04);
+            background: rgba(51, 65, 85, 0.8);
+        }
+
+        .cell-btn:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        /* Pop in effect */
+        @keyframes popIn {
+            0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Pulse glow for winning cells */
+        @keyframes winPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .win-animate {
+            animation: winPulse 1s infinite ease-in-out;
+        }
+
+        /* Winning Line CSS Overlay */
+        .winning-line {
+            position: absolute;
+            background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
+            border-radius: 999px;
+            z-index: 20;
+            transition: all 0.4s ease-out;
+            box-shadow: 0 0 20px #ec4899, 0 0 40px #8b5cf6;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between min-h-screen text-slate-100 p-4 select-none">
+
+    <!-- Header Section -->
+    <header class="w-full max-w-lg text-center mt-2 mb-4">
+        <h1 class="text-4xl md:text-5xl font-black tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-rose-500 via-purple-400 to-cyan-400 drop-shadow-lg">
+            Tic Tac Toe
+        </h1>
+        <p class="text-xs md:text-sm text-slate-400 font-semibold tracking-widest mt-1">
+            NEON ARCADE EDITION
+        </p>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-lg glass-panel rounded-3xl p-5 md:p-7 shadow-2xl flex flex-col items-center relative overflow-hidden">
+        
+        <!-- Game Mode Selection Controls -->
+        <div class="w-full grid grid-cols-2 gap-2 p-1.5 bg-slate-900/80 rounded-2xl mb-5 text-sm font-bold">
+            <button id="mode-p2p" class="py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg">
+                <i class="fa-solid font-bold fa-user-group text-xs"></i> 2 Players
+            </button>
+            <button id="mode-ai" class="py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-robot text-xs"></i> vs Computer
+            </button>
+        </div>
+
+        <!-- AI Difficulty Selector (Hidden when in 2 Player Mode) -->
+        <div id="ai-difficulty-container" class="w-full mb-5 hidden">
+            <div class="flex items-center justify-between text-xs text-slate-400 mb-2 px-1 font-semibold">
+                <span>AI DIFFICULTY</span>
+                <span id="difficulty-label" class="text-cyan-400 font-bold uppercase">Unbeatable</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 bg-slate-900/60 p-1 rounded-xl">
+                <button data-diff="easy" class="diff-btn py-1.5 text-xs rounded-lg font-bold transition-all text-slate-400 hover:text-white">Easy</button>
+                <button data-diff="medium" class="diff-btn py-1.5 text-xs rounded-lg font-bold transition-all text-slate-400 hover:text-white">Medium</button>
+                <button data-diff="hard" class="diff-btn py-1.5 text-xs rounded-lg font-bold transition-all bg-cyan-500 text-slate-950 shadow-md">Unbeatable</button>
+            </div>
+        </div>
+
+        <!-- Score Board -->
+        <div class="w-full grid grid-cols-3 gap-3 mb-6 text-center">
+            <!-- Player X Card -->
+            <div id="card-x" class="glass-card p-3 rounded-2xl border-2 border-rose-500/50 transition-all duration-300">
+                <div class="text-rose-500 font-black text-2xl glow-x">X</div>
+                <div id="name-x" class="text-xs font-bold text-slate-300 truncate">PLAYER 1</div>
+                <div id="score-x" class="text-2xl font-extrabold text-white mt-1">0</div>
+            </div>
+
+            <!-- Ties Card -->
+            <div class="glass-card p-3 rounded-2xl border border-slate-700/50 flex flex-col justify-between">
+                <div class="text-slate-400 font-bold text-xs uppercase tracking-wider">Ties</div>
+                <div id="score-ties" class="text-2xl font-extrabold text-slate-200">0</div>
+                <div class="text-[10px] text-slate-500">DRAWS</div>
+            </div>
+
+            <!-- Player O Card -->
+            <div id="card-o" class="glass-card p-3 rounded-2xl border border-slate-700/50 transition-all duration-300">
+                <div class="text-cyan-400 font-black text-2xl glow-o">O</div>
+                <div id="name-o" class="text-xs font-bold text-slate-300 truncate">PLAYER 2</div>
+                <div id="score-o" class="text-2xl font-extrabold text-white mt-1">0</div>
+            </div>
+        </div>
+
+        <!-- Status Banner / Turn Indicator -->
+        <div id="status-banner" class="w-full py-2.5 px-4 mb-5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-center font-bold text-sm tracking-wide text-slate-200 flex items-center justify-center gap-2">
+            <span id="turn-icon" class="inline-block text-rose-500 text-lg font-extrabold">✕</span>
+            <span id="status-text">Player 1's Turn</span>
+        </div>
+
+        <!-- Game Board Canvas Container -->
+        <div class="relative w-full aspect-square max-w-[340px] flex items-center justify-center p-2">
+            <!-- Line Overlay Layer -->
+            <div id="winning-line" class="winning-line hidden"></div>
+
+            <!-- Grid Buttons -->
+            <div id="board" class="grid grid-cols-3 gap-3 w-full h-full">
+                <button data-index="0" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="1" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="2" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="3" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="4" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="5" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="6" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="7" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+                <button data-index="8" class="cell-btn glass-card rounded-2xl text-4xl md:text-5xl font-black flex items-center justify-center aspect-square border border-slate-700/60 focus:outline-none"></button>
+            </div>
+        </div>
+
+        <!-- Action Control Buttons -->
+        <div class="w-full flex items-center gap-3 mt-6">
+            <button id="reset-board-btn" class="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95">
+                <i class="fa-solid fa-rotate-right"></i> Next Round
+            </button>
+            <button id="reset-all-btn" class="py-3 px-4 rounded-xl font-bold text-sm bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center justify-center gap-2 active:scale-95">
+                <i class="fa-solid fa-power-off"></i> Reset Score
+            </button>
+            <button id="sound-toggle-btn" class="py-3 px-3.5 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all flex items-center justify-center active:scale-95" title="Toggle Sound">
+                <i id="sound-icon" class="fa-solid fa-volume-high text-cyan-400"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-xs text-slate-500 font-medium my-3 text-center">
+        Crafted with Vibrant CSS & Interactive Audio Engine
+    </footer>
+
+    <script>
+        /* Sound Effects Engine using Web Audio API */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playMove(isX) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = isX ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(isX ? 440 : 330, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(isX ? 880 : 660, this.ctx.currentTime + 0.1);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playWin() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, index) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + index * 0.08);
+
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime + index * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + index * 0.08 + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(this.ctx.currentTime + index * 0.08);
+                    osc.stop(this.ctx.currentTime + index * 0.08 + 0.25);
+                });
+            }
+
+            playTie() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(110, this.ctx.currentTime + 0.3);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+        }
+
+        const sound = new SoundEngine();
+
+        // Game State Variables
+        let board = Array(9).fill('');
+        let currentPlayer = 'X';
+        let isGameActive = true;
+        let gameMode = 'p2p'; // 'p2p' or 'ai'
+        let aiDifficulty = 'hard'; // 'easy', 'medium', 'hard'
+        let scores = { X: 0, O: 0, ties: 0 };
+
+        const WINNING_COMBINATIONS = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6]             // Diagonals
+        ];
+
+        // DOM Elements
+        const cells = document.querySelectorAll('.cell-btn');
+        const statusText = document.getElementById('status-text');
+        const turnIcon = document.getElementById('turn-icon');
+        const scoreXEl = document.getElementById('score-x');
+        const scoreOEl = document.getElementById('score-o');
+        const scoreTiesEl = document.getElementById('score-ties');
+        const cardX = document.getElementById('card-x');
+        const cardO = document.getElementById('card-o');
+        const nameO = document.getElementById('name-o');
+        const modeP2PBtn = document.getElementById('mode-p2p');
+        const modeAIBtn = document.getElementById('mode-ai');
+        const aiDiffContainer = document.getElementById('ai-difficulty-container');
+        const diffBtns = document.querySelectorAll('.diff-btn');
+        const diffLabel = document.getElementById('difficulty-label');
+        const resetBoardBtn = document.getElementById('reset-board-btn');
+        const resetAllBtn = document.getElementById('reset-all-btn');
+        const soundToggleBtn = document.getElementById('sound-toggle-btn');
+        const soundIcon = document.getElementById('sound-icon');
+        const winningLine = document.getElementById('winning-line');
+
+        // Initialize Audio on First User Interaction
+        document.body.addEventListener('click', () => sound.init(), { once: true });
+
+        // Event Listeners Initialization
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        resetBoardBtn.addEventListener('click', () => resetBoard(false));
+        resetAllBtn.addEventListener('click', () => resetBoard(true));
+        
+        modeP2PBtn.addEventListener('click', () => setGameMode('p2p'));
+        modeAIBtn.addEventListener('click', () => setGameMode('ai'));
+
+        diffBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const diff = e.target.getAttribute('data-diff');
+                setAIDifficulty(diff);
+            });
+        });
+
+        soundToggleBtn.addEventListener('click', () => {
+            sound.muted = !sound.muted;
+            soundIcon.className = sound.muted 
+                ? 'fa-solid fa-volume-xmark text-slate-500' 
+                : 'fa-solid fa-volume-high text-cyan-400';
+        });
+
+        function handleCellClick(e) {
+            const index = parseInt(e.target.getAttribute('data-index'));
+
+            if (board[index] !== '' || !isGameActive) return;
+
+            makeMove(index, currentPlayer);
+
+            if (isGameActive && gameMode === 'ai' && currentPlayer === 'O') {
+                // Trigger AI Turn after brief delay
+                disableBoard(true);
+                setTimeout(() => {
+                    makeAIMove();
+                    disableBoard(false);
+                }, 400);
+            }
+        }
+
+        function disableBoard(disable) {
+            cells.forEach(cell => {
+                if (disable || board[cell.getAttribute('data-index')] !== '') {
+                    cell.disabled = true;
+                } else {
+                    cell.disabled = false;
+                }
+            });
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cell = cells[index];
+            
+            // Set cell visual
+            cell.innerHTML = player === 'X' 
+                ? `<span class="glow-x text-rose-500 animate-pop">✕</span>` 
+                : `<span class="glow-o text-cyan-400 animate-pop">◯</span>`;
+            
+            cell.disabled = true;
+            sound.playMove(player === 'X');
+
+            const winCombo = checkWin(board, player);
+
+            if (winCombo) {
+                handleWin(player, winCombo);
+            } else if (isBoardFull(board)) {
+                handleTie();
+            } else {
+                // Switch Turns
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                updateTurnIndicator();
+            }
+        }
+
+        function checkWin(currentBoard, player) {
+            for (let combo of WINNING_COMBINATIONS) {
+                if (combo.every(index => currentBoard[index] === player)) {
+                    return combo;
+                }
+            }
+            return null;
+        }
+
+        function isBoardFull(currentBoard) {
+            return currentBoard.every(cell => cell !== '');
+        }
+
+        function handleWin(winner, combo) {
+            isGameActive = false;
+            scores[winner]++;
+            updateScores();
+            sound.playWin();
+
+            // Highlight winning cells
+            combo.forEach(index => {
+                cells[index].classList.add('win-animate');
+                if (winner === 'X') {
+                    cells[index].classList.add('box-glow-x');
+                } else {
+                    cells[index].classList.add('box-glow-o');
+                }
+            });
+
+            // Draw line overlay across winner cells
+            drawWinningLine(combo);
+
+            const winnerName = winner === 'X' ? 'Player 1' : (gameMode === 'ai' ? 'Computer' : 'Player 2');
+            statusText.textContent = `${winnerName} Wins! 🎉`;
+            turnIcon.textContent = winner === 'X' ? '✕' : '◯';
+            turnIcon.className = winner === 'X' ? 'inline-block text-rose-500 text-lg font-extrabold' : 'inline-block text-cyan-400 text-lg font-extrabold';
+        }
+
+        function handleTie() {
+            isGameActive = false;
+            scores.ties++;
+            updateScores();
+            sound.playTie();
+
+            statusText.textContent = "It's a Draw! 🤝";
+            turnIcon.textContent = '=';
+            turnIcon.className = 'inline-block text-slate-400 text-lg font-extrabold';
+        }
+
+        function drawWinningLine(combo) {
+            const boardContainer = document.getElementById('board');
+            const boardRect = boardContainer.getBoundingClientRect();
+            
+            const cellA = cells[combo[0]].getBoundingClientRect();
+            const cellC = cells[combo[2]].getBoundingClientRect();
+
+            const startX = cellA.left + cellA.width / 2 - boardRect.left;
+            const startY = cellA.top + cellA.height / 2 - boardRect.top;
+            const endX = cellC.left + cellC.width / 2 - boardRect.left;
+            const endY = cellC.top + cellC.height / 2 - boardRect.top;
+
+            const length = Math.hypot(endX - startX, endY - startY);
+            const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI);
+
+            winningLine.style.width = `${length}px`;
+            winningLine.style.height = `6px`;
+            winningLine.style.left = `${startX}px`;
+            winningLine.style.top = `${startY - 3}px`;
+            winningLine.style.transformOrigin = `0 50%`;
+            winningLine.style.transform = `rotate(${angle}deg)`;
+            winningLine.classList.remove('hidden');
+        }
+
+        function makeAIMove() {
+            if (!isGameActive) return;
+
+            let moveIndex;
+
+            if (aiDifficulty === 'easy') {
+                moveIndex = getRandomMove();
+            } else if (aiDifficulty === 'medium') {
+                // 50% chance optimal, 50% chance random
+                moveIndex = Math.random() < 0.5 ? getBestMinimaxMove() : getRandomMove();
+            } else { // Hard / Unbeatable
+                moveIndex = getBestMinimaxMove();
+            }
+
+            if (moveIndex !== undefined && moveIndex !== -1) {
+                makeMove(moveIndex, 'O');
+            }
+        }
+
+        function getRandomMove() {
+            const emptyIndices = board.map((val, idx) => val === '' ? idx : null).filter(val => val !== null);
+            if (emptyIndices.length === 0) return -1;
+            return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+        }
+
+        function getBestMinimaxMove() {
+            let bestScore = -Infinity;
+            let move = -1;
+
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = 'O';
+                    let score = minimax(board, 0, false);
+                    board[i] = '';
+                    if (score > bestScore) {
+                        bestScore = score;
+                        move = i;
+                    }
+                }
+            }
+            return move;
+        }
+
+        function minimax(tempBoard, depth, isMaximizing) {
+            if (checkWin(tempBoard, 'O')) return 10 - depth;
+            if (checkWin(tempBoard, 'X')) return depth - 10;
+            if (isBoardFull(tempBoard)) return 0;
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (tempBoard[i] === '') {
+                        tempBoard[i] = 'O';
+                        let score = minimax(tempBoard, depth + 1, false);
+                        tempBoard[i] = '';
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (tempBoard[i] === '') {
+                        tempBoard[i] = 'X';
+                        let score = minimax(tempBoard, depth + 1, true);
+                        tempBoard[i] = '';
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+        }
+
+        function updateTurnIndicator() {
+            if (currentPlayer === 'X') {
+                statusText.textContent = "Player 1's Turn";
+                turnIcon.textContent = '✕';
+                turnIcon.className = 'inline-block text-rose-500 text-lg font-extrabold';
+                
+                cardX.classList.add('border-rose-500/50');
+                cardO.classList.remove('border-cyan-400/50');
+            } else {
+                statusText.textContent = gameMode === 'ai' ? "Computer Thinking..." : "Player 2's Turn";
+                turnIcon.textContent = '◯';
+                turnIcon.className = 'inline-block text-cyan-400 text-lg font-extrabold';
+                
+                cardO.classList.add('border-cyan-400/50');
+                cardX.classList.remove('border-rose-500/50');
+            }
+        }
+
+        function updateScores() {
+            scoreXEl.textContent = scores.X;
+            scoreOEl.textContent = scores.O;
+            scoreTiesEl.textContent = scores.ties;
+        }
+
+        function setGameMode(mode) {
+            gameMode = mode;
+            if (mode === 'p2p') {
+                modeP2PBtn.className = "py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg";
+                modeAIBtn.className = "py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+                aiDiffContainer.classList.add('hidden');
+                nameO.textContent = "PLAYER 2";
+            } else {
+                modeAIBtn.className = "py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg";
+                modeP2PBtn.className = "py-2.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 text-slate-400 hover:text-white";
+                aiDiffContainer.classList.remove('hidden');
+                nameO.textContent = "COMPUTER";
+            }
+            resetBoard(true);
+        }
+
+        function setAIDifficulty(diff) {
+            aiDifficulty = diff;
+            diffBtns.forEach(btn => {
+                if (btn.getAttribute('data-diff') === diff) {
+                    btn.className = "diff-btn py-1.5 text-xs rounded-lg font-bold transition-all bg-cyan-500 text-slate-950 shadow-md";
+                } else {
+                    btn.className = "diff-btn py-1.5 text-xs rounded-lg font-bold transition-all text-slate-400 hover:text-white";
+                }
+            });
+            diffLabel.textContent = diff === 'hard' ? 'Unbeatable' : diff;
+            resetBoard(false);
+        }
+
+        function resetBoard(resetScore = false) {
+            board = Array(9).fill('');
+            currentPlayer = 'X';
+            isGameActive = true;
+
+            winningLine.classList.add('hidden');
+
+            cells.forEach(cell => {
+                cell.innerHTML = '';
+                cell.disabled = false;
+                cell.classList.remove('win-animate', 'box-glow-x', 'box-glow-o');
+            });
+
+            if (resetScore) {
+                scores = { X: 0, O: 0, ties: 0 };
+                updateScores();
+            }
+
+            updateTurnIndicator();
+        }
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
